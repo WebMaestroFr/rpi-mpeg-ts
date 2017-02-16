@@ -1,0 +1,23 @@
+{
+    "name": "rpi-mpeg-ts",
+    "version": "1.0.0",
+    "description": "Stream MPEG-TS from Raspberry Pi Camera. Full power.",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/WebMaestroFr/rpi-mpeg-ts.git"
+    },
+    "author": "etienne@webmaestro.fr",
+    "license": "UNLICENSED",
+    "bugs": {
+        "url": "https://github.com/WebMaestroFr/rpi-mpeg-ts/issues"
+    },
+    "homepage": "https://github.com/WebMaestroFr/rpi-mpeg-ts#readme",
+    "dependencies": {
+        "express": "^4.14.1",
+        "ws": "^2.0.3"
+    }
+}
