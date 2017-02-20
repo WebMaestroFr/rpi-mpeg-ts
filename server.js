@@ -42,7 +42,7 @@ app.get("/", function(req, res) {
 var server = require("http").Server(app);
 server.listen(config.port.http, function() {
     "use strict";
-    console.log("HTTP Server");
+    console.log("HTTP Server", server.address());
 });
 
 // WebSockets
@@ -59,6 +59,11 @@ var broadcast = function(ws, message) {
 };
 
 var cameraDataSocket = new WebSocket.Server({port: config.port.camera.data, perMessageDeflate: false});
+
+cameraDataSocket.on('connection', function connection(socket) {
+    "use strict";
+    console.log("WebSocket Connection");
+});
 
 // Video Conversion Stream
 var avconvStream = spawn("avconv", [
@@ -106,8 +111,6 @@ var raspividStream = spawn("raspivid", [
     config.size.width,
     "--height",
     config.size.height,
-    "--saturation",
-    "-100",
     "--output",
     "-"
 ], {
