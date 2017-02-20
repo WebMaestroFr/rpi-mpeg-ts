@@ -26,4 +26,4 @@ npm install
 ```bash
 npm start
 ```
-Soon after, the video stream is available at [raspberrypi.local:8080](http://raspberrypi.local:8080/).
+Soon after, the video stream is available on [port 8080](http://raspberrypi.local:8080/).

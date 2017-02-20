@@ -6,5 +6,6 @@ var player = new JSMpeg.Player(url + ":8082", {
     autoplay: true,
     audio: false,
     poster: "http://placehold.it/640x480/222222/ffffff?text=Waiting+for+camera+...",
+    pauseWhenHidden: false,
     progressive: false
 });

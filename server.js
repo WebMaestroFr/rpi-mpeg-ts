@@ -1,7 +1,7 @@
 // Configuration
 var config = {
     framerate: 24,
-    bitrate: "1024k",
+    bitrate: 1024 * 1024,
     size: {
         width: 640,
         height: 480
@@ -12,8 +12,7 @@ var config = {
             data: 8082,
             message: 8083
         }
-    },
-    debug: false
+    }
 };
 
 // Path
@@ -32,9 +31,14 @@ app.use("/", express.static(path.join(__dirname, "static")));
 // Index
 app.get("/", function(req, res) {
     "use strict";
-    var index = path.join(__dirname, config.debug
-        ? "index.debug.html"
-        : "index.html");
+    var index = path.join(__dirname, "index.html");
+    res.sendFile(index);
+});
+
+// Debug
+app.get("/debug", function(req, res) {
+    "use strict";
+    var index = path.join(__dirname, "debug.html");
     res.sendFile(index);
 });
 
@@ -42,7 +46,7 @@ app.get("/", function(req, res) {
 var server = require("http").Server(app);
 server.listen(config.port.http, function() {
     "use strict";
-    console.log("HTTP Server", server.address());
+    console.log("HTTP Server");
 });
 
 // WebSockets
@@ -58,7 +62,8 @@ var broadcast = function(ws, message) {
         });
 };
 
-var cameraDataSocket = new WebSocket.Server({port: config.port.camera.data, perMessageDeflate: false});
+var cameraDataSocket = new WebSocket.Server({port: config.port.camera.data});
+var cameraMessageSocket = new WebSocket.Server({port: config.port.camera.message});
 
 cameraDataSocket.on('connection', function connection(socket) {
     "use strict";
@@ -96,6 +101,24 @@ avconvStream
         broadcast(cameraDataSocket, data);
     });
 
+avconvStream
+    .stderr
+    .on("data", function(data) {
+        "use strict";
+        var message = data.toString("utf8");
+        var r = /([a-z]+)=\s*([0-9.]+)/g;
+        var match = null;
+        var info = {};
+        while (match = r.exec(message)) {
+            info[match[1]] = parseFloat(match[2]);
+        }
+        if (Object.keys(info).length) {
+            broadcast(cameraMessageSocket, JSON.stringify(info));
+        } else {
+            console.log(message);
+        }
+    });
+
 // Video Capture Stream
 var raspividStream = spawn("raspivid", [
     "--nopreview",
@@ -111,6 +134,8 @@ var raspividStream = spawn("raspivid", [
     config.size.width,
     "--height",
     config.size.height,
+    "--bitrate",
+    config.bitrate,
     "--output",
     "-"
 ], {
@@ -120,26 +145,3 @@ var raspividStream = spawn("raspivid", [
 raspividStream
     .stdout
     .pipe(avconvStream.stdin);
-
-// Debug
-if (config.debug) {
-    var cameraMessageSocket = new WebSocket.Server({port: config.port.camera.message});
-
-    avconvStream
-        .stderr
-        .on("data", function(data) {
-            "use strict";
-            var message = data.toString("utf8");
-            var r = /([a-z]+)=\s*([0-9.]+)/g;
-            var match = null;
-            var info = {};
-            while (match = r.exec(message)) {
-                info[match[1]] = parseFloat(match[2]);
-            }
-            if (Object.keys(info).length) {
-                broadcast(cameraMessageSocket, JSON.stringify(info));
-            } else {
-                console.log(message);
-            }
-        });
-}
