@@ -13,12 +13,21 @@ Client-side : [JSMpeg](https://github.com/phoboslab/jsmpeg).
 
 ## Installation
 
-```
+```bash
 curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
 sudo apt-get upgrade -y -q
 sudo apt-get install git nodejs libav-tools -y
+
+git clone https://github.com/WebMaestroFr/rpi-mpeg-ts.git
+cd rpi-mpeg-ts
+npm install
 ```
 
+## Capture and Stream
+
+```bash
+npm start
 ```
-git clone https://github.com/WebMaestroFr/rpi-mpeg-ts.git
-```
+Soon after, the video stream is available at [raspberrypi.local:8080](http://raspberrypi.local:8080/).
+
+![Latency is about a second](screenshot.jpg)

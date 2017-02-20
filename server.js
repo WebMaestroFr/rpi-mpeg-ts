@@ -13,7 +13,7 @@ var config = {
             message: 8083
         }
     },
-    debug: true
+    debug: false
 };
 
 // Path
@@ -79,8 +79,8 @@ var avconvStream = spawn("avconv", [
     config.bitrate,
     "-bf",
     "0",
-    "-q:v",
-    "2",
+    "-qmin",
+    "3",
     "-"
 ]);
 
