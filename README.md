@@ -2,9 +2,7 @@
 
 Capture Raspberry Pi Camera output, convert and stream video, decode and play in browser.
 
-Server-side : Node.js, Express, WebSockets, [`raspivid`](https://www.raspberrypi.org/documentation/raspbian/applications/camera.md) and [`avconv`](https://libav.org/documentation/avconv.html).
-
-Client-side : [JSMpeg](https://github.com/phoboslab/jsmpeg).
+Express, WebSockets, [`raspivid`](https://www.raspberrypi.org/documentation/raspbian/applications/camera.md), [`avconv`](https://libav.org/documentation/avconv.html) and [JSMpeg](https://github.com/phoboslab/jsmpeg).
 
 ## Requirements
 
