@@ -7,7 +7,7 @@ Express, WebSockets, [`raspivid`](https://www.raspberrypi.org/documentation/rasp
 ## Requirements
 
 - Raspberry Pi [running Raspbian](https://www.raspberrypi.org/documentation/installation/installing-images/README.md) and [connected to your local network](https://www.raspberrypi.org/documentation/configuration/wireless/wireless-cli.md).
-- Camera [enabled with `raspi-config`](https://www.raspberrypi.org/documentation/configuration/camera.md).
+- [Camera enabled](https://www.raspberrypi.org/documentation/configuration/camera.md).
 
 ## Installation
 
@@ -27,5 +27,3 @@ npm install
 npm start
 ```
 Soon after, the video stream is available at [raspberrypi.local:8080](http://raspberrypi.local:8080/).
-
-![Latency is about a second](screenshot.jpg)
