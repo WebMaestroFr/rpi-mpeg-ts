@@ -2,6 +2,7 @@
 var config = {
     framerate: 24,
     bitrate: 1024 * 1024,
+    probesize: 128 * 1024,
     size: {
         width: 640,
         height: 480
@@ -72,6 +73,8 @@ cameraDataSocket.on('connection', function connection(socket) {
 
 // Video Conversion Stream
 var avconvStream = spawn("avconv", [
+    "-probesize",
+    config.probesize,
     "-fflags",
     "nobuffer",
     "-f",
@@ -134,14 +137,8 @@ var raspividStream = spawn("raspivid", [
     config.size.width,
     "--height",
     config.size.height,
-    "--bitrate",
-    config.bitrate,
     "--output",
     "-"
 ], {
-    stdio: ["ignore", "pipe", "inherit"]
+    stdio: ["ignore", avconvStream.stdin, "inherit"]
 });
-
-raspividStream
-    .stdout
-    .pipe(avconvStream.stdin);
