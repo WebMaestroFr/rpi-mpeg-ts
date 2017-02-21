@@ -1,0 +1,19 @@
+{
+    "server": {
+        "http": {
+            "port": 8080
+        },
+        "ws": {
+            "port": 8082
+        }
+    },
+    "video": {
+        "bitrate": 1048576,
+        "framerate": 24,
+        "size": {
+            "height": 480,
+            "width": 640
+        },
+        "probesize": 131072
+    }
+}

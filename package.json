@@ -1,7 +1,7 @@
 {
     "name": "rpi-mpeg-ts",
     "version": "1.0.0",
-    "description": "Stream MPEG-TS from Raspberry Pi Camera. Full power.",
+    "description": "Raspberry Pi MPEG Transport Stream",
     "main": "server.js",
     "scripts": {
         "start": "node server.js"

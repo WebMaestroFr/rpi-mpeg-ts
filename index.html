@@ -4,45 +4,14 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-
     <title>Raspberry Pi Camera Stream</title>
-
-    <style type="text/css">
-        html,
-        body {
-            position: relative;
-            overflow: hidden;
-            margin: 0;
-            background: gray;
-        }
-        
-        canvas {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        
-        @media all and (min-aspect-ratio: 4/3) {
-            canvas {
-                width: 100%;
-                height: auto;
-            }
-        }
-        
-        @media not all and (min-aspect-ratio: 4/3) {
-            canvas {
-                height: 100%;
-                width: auto;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/css/style.css" />
 </head>
 
 <body>
     <canvas id="camera-stream" width="640" height="480"></canvas>
-    <script type="text/javascript" src="js/jsmpeg.min.js"></script>
-    <script type="text/javascript" src="js/client.js"></script>
+    <script src="/js/jsmpeg.min.js"></script>
+    <script src="/js/script.js"></script>
 </body>
 
 </html>

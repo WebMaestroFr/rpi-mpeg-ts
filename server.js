@@ -1,20 +1,5 @@
 // Configuration
-var config = {
-    framerate: 24,
-    bitrate: 1024 * 1024,
-    probesize: 128 * 1024,
-    size: {
-        width: 640,
-        height: 480
-    },
-    port: {
-        http: 8080,
-        camera: {
-            data: 8082,
-            message: 8083
-        }
-    }
-};
+var config = require("./config.json");
 
 // Path
 var path = require("path");
@@ -36,51 +21,40 @@ app.get("/", function(req, res) {
     res.sendFile(index);
 });
 
-// Debug
-app.get("/debug", function(req, res) {
-    "use strict";
-    var index = path.join(__dirname, "debug.html");
-    res.sendFile(index);
-});
-
 // HTTP Server
 var server = require("http").Server(app);
-server.listen(config.port.http, function() {
-    "use strict";
-    console.log("HTTP Server");
-});
+server.listen(config.server.http);
 
-// WebSockets
+// WebSocket Server
 var WebSocket = require("ws");
-var broadcast = function(ws, message) {
+var cameraSocket = new WebSocket.Server(config.server.ws);
+cameraSocket.broadcast = function broadcast(data) {
     "use strict";
-    ws
+    cameraSocket
         .clients
         .forEach(function(client) {
             if (client.readyState === WebSocket.OPEN) {
-                client.send(message);
+                client.send(data);
             }
         });
 };
 
-var cameraDataSocket = new WebSocket.Server({port: config.port.camera.data});
-var cameraMessageSocket = new WebSocket.Server({port: config.port.camera.message});
-
-cameraDataSocket.on('connection', function connection(socket) {
+// Index Page
+app.get("/", function(req, res) {
     "use strict";
-    console.log("WebSocket Connection");
+    res.render("index", config);
 });
 
 // Video Conversion Stream
 var avconvStream = spawn("avconv", [
     "-probesize",
-    config.probesize,
+    config.video.probesize,
     "-fflags",
     "nobuffer",
     "-f",
     "h264",
     "-r",
-    config.framerate,
+    config.video.framerate,
     "-i",
     "-",
     "-an",
@@ -89,7 +63,7 @@ var avconvStream = spawn("avconv", [
     "-codec:v",
     "mpeg1video",
     "-b:v",
-    config.bitrate,
+    config.video.bitrate,
     "-bf",
     "0",
     "-qmin",
@@ -99,44 +73,30 @@ var avconvStream = spawn("avconv", [
 
 avconvStream
     .stdout
-    .on("data", function(data) {
-        "use strict";
-        broadcast(cameraDataSocket, data);
-    });
+    .on("data", cameraSocket.broadcast);
 
 avconvStream
     .stderr
     .on("data", function(data) {
         "use strict";
         var message = data.toString("utf8");
-        var r = /([a-z]+)=\s*([0-9.]+)/g;
-        var match = null;
-        var info = {};
-        while (match = r.exec(message)) {
-            info[match[1]] = parseFloat(match[2]);
-        }
-        if (Object.keys(info).length) {
-            broadcast(cameraMessageSocket, JSON.stringify(info));
-        } else {
-            console.log(message);
-        }
+        console.log(message);
     });
 
 // Video Capture Stream
 var raspividStream = spawn("raspivid", [
     "--nopreview",
-    "--verbose",
     "--hflip",
     "--vflip",
     "--inline",
     "--timeout",
     "0",
     "--framerate",
-    config.framerate,
+    config.video.framerate,
     "--width",
-    config.size.width,
+    config.video.size.width,
     "--height",
-    config.size.height,
+    config.video.size.height,
     "--output",
     "-"
 ], {

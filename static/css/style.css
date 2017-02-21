@@ -1,0 +1,23 @@
+body,
+html {
+    position: relative;
+    overflow: hidden;
+    margin: 0;
+    background: #333;
+    color: #fff;
+}
+
+canvas {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    height: 100%;
+    width: auto;
+}
+@media all and (min-aspect-ratio: 4/3) {
+    canvas {
+        width: 100%;
+        height: auto;
+    }
+}
