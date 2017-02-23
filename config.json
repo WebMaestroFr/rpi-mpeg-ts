@@ -3,17 +3,28 @@
         "http": {
             "port": 8080
         },
-        "ws": {
+        "json": {
             "port": 8082
+        },
+        "mpeg": {
+            "port": 8084
+        },
+        "jpeg": {
+            "port": 8086
         }
     },
-    "video": {
-        "bitrate": 1048576,
+    "camera": {
         "framerate": 24,
         "size": {
-            "height": 480,
-            "width": 640
+            "height": 240,
+            "width": 320
         },
         "probesize": 131072
+    },
+    "mpeg": {
+        "bitrate": 1048576
+    },
+    "jpeg": {
+        "framerate": 1
     }
 }

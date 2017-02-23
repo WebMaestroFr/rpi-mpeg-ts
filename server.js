@@ -1,6 +1,59 @@
 // Configuration
 var config = require("./config.json");
 
+// Commands
+var raspividArgs = [
+    "--nopreview",
+    "--hflip",
+    "--vflip",
+    "--inline",
+    "--timeout",
+    "0",
+    "--framerate",
+    config.camera.framerate,
+    "--width",
+    config.camera.size.width,
+    "--height",
+    config.camera.size.height,
+    "--output",
+    "-"
+];
+var avconvInputArgs = [
+    "-fflags",
+    "nobuffer",
+    "-probesize",
+    config.camera.probesize,
+    "-f",
+    "h264",
+    "-r",
+    config.camera.framerate,
+    "-i",
+    "-",
+    "-an"
+];
+var mpegArgs = avconvInputArgs.concat([
+    "-f",
+    "mpegts",
+    "-codec:v",
+    "mpeg1video",
+    "-b:v",
+    config.mpeg.bitrate,
+    "-bf",
+    "0",
+    "-qmin",
+    "3",
+    "-"
+]);
+var jpegArgs = avconvInputArgs.concat([
+    "-f",
+    "image2pipe",
+    "-r",
+    config.jpeg.framerate,
+    "-q:v",
+    "1",
+    "-"
+]);
+
 // Path
 var path = require("path");
 
@@ -25,57 +78,72 @@ app.get("/", function(req, res) {
 var server = require("http").Server(app);
 server.listen(config.server.http);
 
-// WebSocket Server
+// WebSockets
 var WebSocket = require("ws");
-var cameraSocket = new WebSocket.Server(config.server.ws);
-cameraSocket.broadcast = function broadcast(data) {
+var createSocketServer = function(name) {
     "use strict";
-    cameraSocket
-        .clients
-        .forEach(function(client) {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(data);
-            }
-        });
+    var socket = new WebSocket.Server(config.server[name]);
+    socket.broadcast = function broadcast(data) {
+        socket
+            .clients
+            .forEach(function(client) {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(data);
+                }
+            });
+    };
+    return socket;
 };
+var detectionSocket = createSocketServer("json");
+var mpegSocket = createSocketServer("mpeg");
 
-// Index Page
-app.get("/", function(req, res) {
-    "use strict";
-    res.render("index", config);
+// Computer Vision
+var cv = require('opencv');
+var imageStream = new cv.ImageStream();
+var opencvReady = true;
+imageStream.on('data', function(matrix) {
+    if (opencvReady) {
+        opencvReady = false;
+        try {
+            matrix
+                .detectObject(cv.FACE_CASCADE, {}, function(err, faces) {
+                    if (err) {
+                        throw err;
+                    }
+                    var buffer = matrix.toBuffer();
+                    var data = JSON.stringify({
+                        faces: faces,
+                        buffer: buffer.toString('base64')
+                    });
+                    detectionSocket.broadcast(data);
+                    opencvReady = true;
+                });
+        } catch (err) {
+            console.log(err)
+            opencvReady = true;
+        }
+    }
 });
 
 // Video Conversion Stream
-var avconvStream = spawn("avconv", [
-    "-probesize",
-    config.video.probesize,
-    "-fflags",
-    "nobuffer",
-    "-f",
-    "h264",
-    "-r",
-    config.video.framerate,
-    "-i",
-    "-",
-    "-an",
-    "-f",
-    "mpegts",
-    "-codec:v",
-    "mpeg1video",
-    "-b:v",
-    config.video.bitrate,
-    "-bf",
-    "0",
-    "-qmin",
-    "3",
-    "-"
-]);
-
-avconvStream
+var mpegStream = spawn("avconv", mpegArgs);
+mpegStream
     .stdout
-    .on("data", cameraSocket.broadcast);
+    .on("data", mpegSocket.broadcast);
+mpegStream
+    .stderr
+    .on("data", function(data) {
+        "use strict";
+        var message = data.toString("utf8");
+        console.log(message);
+    });
 
-avconvStream
+// Frame Extraction Stream
+var jpegStream = spawn("avconv", jpegArgs);
+jpegStream
+    .stdout
+    .pipe(imageStream);
+jpegStream
     .stderr
     .on("data", function(data) {
         "use strict";
@@ -84,21 +152,14 @@ avconvStream
     });
 
 // Video Capture Stream
-var raspividStream = spawn("raspivid", [
-    "--nopreview",
-    "--hflip",
-    "--vflip",
-    "--inline",
-    "--timeout",
-    "0",
-    "--framerate",
-    config.video.framerate,
-    "--width",
-    config.video.size.width,
-    "--height",
-    config.video.size.height,
-    "--output",
-    "-"
-], {
-    stdio: ["ignore", avconvStream.stdin, "inherit"]
+var raspividStream = spawn("raspivid", raspividArgs, {
+    stdio: ["ignore", "pipe", "inherit"]
 });
+
+raspividStream
+    .stdout
+    .pipe(mpegStream.stdin);
+
+raspividStream
+    .stdout
+    .pipe(jpegStream.stdin);

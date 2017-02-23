@@ -18,6 +18,7 @@
     "homepage": "https://github.com/WebMaestroFr/rpi-mpeg-ts#readme",
     "dependencies": {
         "express": "^4.14.1",
+        "opencv": "^6.0.0",
         "ws": "^2.0.3"
     }
 }
