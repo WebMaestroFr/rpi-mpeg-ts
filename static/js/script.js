@@ -1,7 +1,9 @@
-var canvas = document.getElementById("camera-stream");
 var url = "ws://" + document.location.hostname;
-var player = new JSMpeg.Player(url + ":8082", {
-    canvas: canvas,
+
+// MPEG Stream (https://github.com/phoboslab/jsmpeg)
+var mpegCanvas = document.getElementById("mpeg-stream");
+var mpegPlayer = new JSMpeg.Player(url + ":8084", {
+    canvas: mpegCanvas,
     loop: false,
     autoplay: true,
     audio: false,

@@ -1,11 +1,9 @@
-// Configuration
-var config = require("./config.json");
+// Camera
+var Camera = require("./camera");
+var camera = new Camera({verbose: true, hflip: true, vflip: true});
 
 // Path
 var path = require("path");
-
-// Process
-var spawn = require("child_process").spawn;
 
 // Application
 var express = require("express");
@@ -23,14 +21,15 @@ app.get("/", function(req, res) {
 
 // HTTP Server
 var server = require("http").Server(app);
-server.listen(config.server.http);
+server.listen({"port": 8080});
 
-// WebSocket Server
+// WebSockets
 var WebSocket = require("ws");
-var cameraSocket = new WebSocket.Server(config.server.ws);
-cameraSocket.broadcast = function broadcast(data) {
-    "use strict";
-    cameraSocket
+
+// MPEG Transport Stream
+var mpegSocket = new WebSocket.Server({port: 8084});
+mpegSocket.broadcast = function(data) {
+    mpegSocket
         .clients
         .forEach(function(client) {
             if (client.readyState === WebSocket.OPEN) {
@@ -38,67 +37,18 @@ cameraSocket.broadcast = function broadcast(data) {
             }
         });
 };
-
-// Index Page
-app.get("/", function(req, res) {
-    "use strict";
-    res.render("index", config);
-});
-
-// Video Conversion Stream
-var avconvStream = spawn("avconv", [
-    "-probesize",
-    config.video.probesize,
-    "-fflags",
-    "nobuffer",
-    "-f",
-    "h264",
-    "-r",
-    config.video.framerate,
-    "-i",
-    "-",
-    "-an",
-    "-f",
-    "mpegts",
-    "-codec:v",
-    "mpeg1video",
-    "-b:v",
-    config.video.bitrate,
-    "-bf",
-    "0",
-    "-qmin",
-    "3",
-    "-"
-]);
-
-avconvStream
-    .stdout
-    .on("data", cameraSocket.broadcast);
-
-avconvStream
-    .stderr
-    .on("data", function(data) {
-        "use strict";
-        var message = data.toString("utf8");
-        console.log(message);
-    });
-
-// Video Capture Stream
-var raspividStream = spawn("raspivid", [
-    "--nopreview",
-    "--hflip",
-    "--vflip",
-    "--inline",
-    "--timeout",
-    "0",
-    "--framerate",
-    config.video.framerate,
-    "--width",
-    config.video.size.width,
-    "--height",
-    config.video.size.height,
-    "--output",
-    "-"
-], {
-    stdio: ["ignore", avconvStream.stdin, "inherit"]
+var mpegStream = camera.stream("mpeg", mpegSocket.broadcast);
+mpegSocket.on("connection", function(client) {
+    console.log("\nWebSocket Connection", mpegSocket.clients.size);
+    if (1 === mpegSocket.clients.size) {
+        mpegStream.start();
+        console.log("\nOpen MPEG Stream");
+    }
+    client
+        .on("close", function() {
+            if (0 === mpegSocket.clients.size) {
+                mpegStream.stop();
+                console.log("\nClose MPEG Stream");
+            }
+        });
 });

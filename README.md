@@ -21,9 +21,21 @@ cd rpi-mpeg-ts
 npm install
 ```
 
-## Capture and Stream
+## Start Capture
 
 ```bash
 npm start
 ```
-Soon after, the video stream is available on [port 8080](http://raspberrypi.local:8080/).
+The video stream is then ready to play on [port 8080](http://raspberrypi.local:8080/).
+
+
+## Server-Side Module
+
+The `./camera` module is converting the *h264* capture into a `mpeg` stream.
+
+```javascript
+var Camera = require("./camera");
+var camera = new Camera({width: 640, height: 480, vflip: true});
+
+var mpegStream = camera.stream("mpeg", mpegSocket.broadcast);
+```
