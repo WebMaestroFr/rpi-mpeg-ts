@@ -1,64 +1,9 @@
-// Configuration
-var config = require("./config.json");
-
-// Commands
-var raspividArgs = [
-    "--nopreview",
-    "--hflip",
-    "--vflip",
-    "--inline",
-    "--timeout",
-    "0",
-    "--framerate",
-    config.camera.framerate,
-    "--width",
-    config.camera.size.width,
-    "--height",
-    config.camera.size.height,
-    "--output",
-    "-"
-];
-var avconvInputArgs = [
-    "-fflags",
-    "nobuffer",
-    "-probesize",
-    config.camera.probesize,
-    "-f",
-    "h264",
-    "-r",
-    config.camera.framerate,
-    "-i",
-    "-",
-    "-an"
-];
-var mpegArgs = avconvInputArgs.concat([
-    "-f",
-    "mpegts",
-    "-codec:v",
-    "mpeg1video",
-    "-b:v",
-    config.mpeg.bitrate,
-    "-bf",
-    "0",
-    "-qmin",
-    "3",
-    "-"
-]);
-var jpegArgs = avconvInputArgs.concat([
-    "-f",
-    "image2pipe",
-    "-r",
-    config.jpeg.framerate,
-    "-q:v",
-    "1",
-    "-"
-]);
+// Camera
+var Camera = require("./camera");
+var camera = new Camera({verbose: true, hflip: true, vflip: true});
 
 // Path
 var path = require("path");
-
-// Process
-var spawn = require("child_process").spawn;
 
 // Application
 var express = require("express");
@@ -76,90 +21,50 @@ app.get("/", function(req, res) {
 
 // HTTP Server
 var server = require("http").Server(app);
-server.listen(config.server.http);
+server.listen({"port": 8080});
 
 // WebSockets
 var WebSocket = require("ws");
-var createSocketServer = function(name) {
-    "use strict";
-    var socket = new WebSocket.Server(config.server[name]);
-    socket.broadcast = function broadcast(data) {
-        socket
-            .clients
-            .forEach(function(client) {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(data);
-                }
-            });
-    };
-    return socket;
+
+// Application Messages
+var socket = new WebSocket.Server({port: 8082});
+socket.broadcast = function broadcast(type, data) {
+    var message = JSON.stringify({type: type, data: data});
+    socket
+        .clients
+        .forEach(function(client) {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(message);
+            }
+        });
 };
-var detectionSocket = createSocketServer("json");
-var mpegSocket = createSocketServer("mpeg");
 
-// Computer Vision
-var cv = require('opencv');
-var imageStream = new cv.ImageStream();
-var opencvReady = true;
-imageStream.on('data', function(matrix) {
-    if (opencvReady) {
-        opencvReady = false;
-        try {
-            matrix
-                .detectObject(cv.FACE_CASCADE, {}, function(err, faces) {
-                    if (err) {
-                        throw err;
-                    }
-                    var buffer = matrix.toBuffer();
-                    var data = JSON.stringify({
-                        faces: faces,
-                        buffer: buffer.toString('base64')
-                    });
-                    detectionSocket.broadcast(data);
-                    opencvReady = true;
-                });
-        } catch (err) {
-            console.log(err)
-            opencvReady = true;
-        }
+// MPEG Transport Stream
+var mpegSocket = new WebSocket.Server({port: 8084});
+mpegSocket.stream = function(data) {
+    mpegSocket
+        .clients
+        .forEach(function(client) {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(data);
+            }
+        });
+};
+var mpegStream = null;
+mpegSocket.on("connection", function(client) {
+    console.log("WebSocket Connection", mpegSocket.clients.size);
+    if (null === mpegStream) {
+        mpegStream = camera.capture("mpeg");
+        mpegStream
+            .stdout
+            .on("data", mpegSocket.stream);
     }
+    client
+        .on("close", function() {
+            if (0 === mpegSocket.clients.size) {
+                camera.stop(mpegStream);
+                mpegStream = null;
+                console.log("Close WebSocket");
+            }
+        });
 });
-
-// Video Conversion Stream
-var mpegStream = spawn("avconv", mpegArgs);
-mpegStream
-    .stdout
-    .on("data", mpegSocket.broadcast);
-mpegStream
-    .stderr
-    .on("data", function(data) {
-        "use strict";
-        var message = data.toString("utf8");
-        console.log(message);
-    });
-
-// Frame Extraction Stream
-var jpegStream = spawn("avconv", jpegArgs);
-jpegStream
-    .stdout
-    .pipe(imageStream);
-jpegStream
-    .stderr
-    .on("data", function(data) {
-        "use strict";
-        var message = data.toString("utf8");
-        console.log(message);
-    });
-
-// Video Capture Stream
-var raspividStream = spawn("raspivid", raspividArgs, {
-    stdio: ["ignore", "pipe", "inherit"]
-});
-
-raspividStream
-    .stdout
-    .pipe(mpegStream.stdin);
-
-raspividStream
-    .stdout
-    .pipe(jpegStream.stdin);
