@@ -2,9 +2,8 @@ var spawn = require("child_process").spawn;
 
 var Camera = function(options) {
 
-    var camera = this;
-
-    camera.options = Object.assign({
+    // Capture options (https://www.raspberrypi.org/documentation/raspbian/applications/camera.md)
+    Camera.options = Object.assign({
         nopreview: true,
         inline: true,
         timeout: 0,
@@ -14,53 +13,39 @@ var Camera = function(options) {
     }, options || {}, {output: "-"});
 
     var args = [];
+    // Command arguments
     Object
-        .keys(camera.options)
+        .keys(Camera.options)
         .forEach(function(opt) {
-            if (camera.options[opt] || camera.options[opt] === 0) {
+            if (Camera.options[opt] || Camera.options[opt] === 0) {
                 args.push("--" + opt);
-                if (true !== camera.options[opt]) {
-                    args.push(camera.options[opt]);
+                if (true !== Camera.options[opt]) {
+                    args.push(Camera.options[opt]);
                 }
             }
         });
 
-    camera.raspivid = spawn("raspivid", args, {input: "ignore"});
-    process.on("exit", camera.raspivid.kill);
+    // Capture
+    var raspivid = spawn("raspivid", args, {
+        stdio: ["ignore", "pipe", "inherit"]
+    });
 
-    camera
-        .raspivid
-        .stderr
-        .on("data", function(data) {
-            "use strict";
-            var message = data.toString("utf8");
-            console.log(message);
-        });
+    // H264 stream
+    Camera.source = raspivid.stdout;
 
-    console.log("Camera", args);
+    // Converters
+    Camera._formats = new Map();
 };
 
-Camera.prototype.capture = function(mode) {
+Camera.prototype.stream = function(format, cb) {
 
-    var camera = this;
-
-    var argsIn = [
-        "-fflags", "nobuffer", "-probesize", 128 * 1024,
-        "-f",
-        "h264",
-        "-r",
-        camera.options.framerate,
-        "-i",
-        "-",
-        "-an"
-    ];
-
-    var format;
-
-    switch (mode) {
+    var argsOut;
+    // Output options (https://libav.org/documentation/avconv.html#Options-1)
+    switch (format) {
 
         case "mpeg":
-            format = [
+            // Video
+            argsOut = [
                 "-f",
                 "mpegts",
                 "-codec:v",
@@ -77,7 +62,8 @@ Camera.prototype.capture = function(mode) {
             break;
 
         case "image":
-            format = [
+            // Frame by frame
+            argsOut = [
                 "-f",
                 "image2pipe",
                 "-r",
@@ -88,37 +74,64 @@ Camera.prototype.capture = function(mode) {
             break;
 
         default:
-            format = mode;
+            // Custom
+            argsOut = format;
     }
 
-    var argsOut = argsIn.concat(format, ["-"]);
-    var stream = spawn("avconv", argsOut);
+    if (Camera._formats.has(argsOut)) {
+        // Process duplicate
+        return Camera
+            ._formats
+            .get(argsOut);
+    }
 
-    console.log("Camera Capture", argsOut);
-
-    camera
-        .raspivid
+    var argsIn = [
+        "-fflags", "nobuffer", "-probesize", 128 * 1024,
+        "-f",
+        "h264",
+        "-r",
+        Camera.options.framerate,
+        "-i",
+        "-",
+        "-an"
+    ];
+    // Command arguments
+    var args = argsIn.concat(argsOut, ["-"]);
+    // Converter
+    var avconv = spawn("avconv", args, {
+        stdio: ["pipe", "pipe", "inherit"]
+    });
+    avconv
         .stdout
-        .pipe(stream.stdin);
-    stream
-        .stderr
-        .on("data", function(data) {
-            "use strict";
-            var message = data.toString("utf8");
-            console.log(message);
+        .on("error", function(err) {
+            console.log(err);
         });
 
+    if (cb) {
+        // Callback
+        avconv
+            .stdout
+            .on("data", cb);
+    }
+
+    // Controller
+    var stream = {
+        start: function() {
+            Camera
+                .source
+                .pipe(avconv.stdin);
+            return avconv;
+        },
+        stop: function() {
+            Camera
+                .source
+                .unpipe(avconv.stdin);
+        }
+    }
+    Camera
+        ._formats
+        .set(argsOut, stream);
     return stream;
-};
-
-Camera.prototype.stop = function(stream) {
-    this
-        .raspivid
-        .stdout
-        .unpipe(stream.stdin);
-    stream.kill();
-
-    console.log("Camera Stop Stream");
-};
+}
 
 module.exports = Camera;

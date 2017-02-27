@@ -26,22 +26,9 @@ server.listen({"port": 8080});
 // WebSockets
 var WebSocket = require("ws");
 
-// Application Messages
-var socket = new WebSocket.Server({port: 8082});
-socket.broadcast = function broadcast(type, data) {
-    var message = JSON.stringify({type: type, data: data});
-    socket
-        .clients
-        .forEach(function(client) {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(message);
-            }
-        });
-};
-
 // MPEG Transport Stream
 var mpegSocket = new WebSocket.Server({port: 8084});
-mpegSocket.stream = function(data) {
+mpegSocket.broadcast = function(data) {
     mpegSocket
         .clients
         .forEach(function(client) {
@@ -50,21 +37,18 @@ mpegSocket.stream = function(data) {
             }
         });
 };
-var mpegStream = null;
+var mpegStream = camera.stream("mpeg", mpegSocket.broadcast);
 mpegSocket.on("connection", function(client) {
-    console.log("WebSocket Connection", mpegSocket.clients.size);
-    if (null === mpegStream) {
-        mpegStream = camera.capture("mpeg");
-        mpegStream
-            .stdout
-            .on("data", mpegSocket.stream);
+    console.log("\nWebSocket Connection", mpegSocket.clients.size);
+    if (1 === mpegSocket.clients.size) {
+        mpegStream.start();
+        console.log("\nOpen MPEG Stream");
     }
     client
         .on("close", function() {
             if (0 === mpegSocket.clients.size) {
-                camera.stop(mpegStream);
-                mpegStream = null;
-                console.log("Close WebSocket");
+                mpegStream.stop();
+                console.log("\nClose MPEG Stream");
             }
         });
 });
