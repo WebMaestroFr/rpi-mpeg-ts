@@ -31,7 +31,7 @@ The video stream is then ready to play on [port 8080](http://raspberrypi.local:8
 
 ## Server-Side Module
 
-The `./camera` module is converting the *h264* capture into a `mpeg` stream.
+The `./camera` module is converting the *h264* capture into a `"mpeg"` stream.
 
 ```javascript
 var Camera = require("./camera");

@@ -15,7 +15,7 @@ canvas {
     height: 100%;
     width: auto;
 }
-@media all and (min-aspect-ratio: 4/3) {
+@media all and (min-aspect-ratio: 640/480) {
     canvas {
         width: 100%;
         height: auto;

@@ -9,7 +9,8 @@ var Camera = function(options) {
         timeout: 0,
         width: 640,
         height: 480,
-        framerate: 30
+        framerate: 24,
+        intra: 1
     }, options || {}, {output: "-"});
 
     var args = [];
@@ -48,28 +49,24 @@ Camera.prototype.stream = function(format, cb) {
             argsOut = [
                 "-f",
                 "mpegts",
-                "-codec:v",
+                "-c:v",
                 "mpeg1video",
-                "-r",
-                24,
                 "-b:v",
-                1024 * 1024,
-                "-bf",
-                "0",
-                "-qmin",
-                "3"
+                1024 * 1024
             ];
             break;
 
-        case "image":
+        case "jpeg":
             // Frame by frame
             argsOut = [
                 "-f",
                 "image2pipe",
+                "-c:v",
+                "mjpeg",
                 "-r",
-                6,
+                4,
                 "-q:v",
-                "1"
+                1
             ];
             break;
 
@@ -92,20 +89,15 @@ Camera.prototype.stream = function(format, cb) {
         "-r",
         Camera.options.framerate,
         "-i",
-        "-",
+        "pipe:0",
         "-an"
     ];
     // Command arguments
-    var args = argsIn.concat(argsOut, ["-"]);
+    var args = argsIn.concat(argsOut, ["pipe:1"]);
     // Converter
     var avconv = spawn("avconv", args, {
         stdio: ["pipe", "pipe", "inherit"]
     });
-    avconv
-        .stdout
-        .on("error", function(err) {
-            console.log(err);
-        });
 
     if (cb) {
         // Callback
