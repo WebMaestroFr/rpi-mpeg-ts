@@ -6,11 +6,11 @@ var Camera = function(options) {
     Camera.options = Object.assign({
         nopreview: true,
         inline: true,
+        intra: 1,
         timeout: 0,
         width: 640,
         height: 480,
-        framerate: 24,
-        intra: 1
+        framerate: 24
     }, options || {}, {output: "-"});
 
     var args = [];
@@ -36,16 +36,18 @@ var Camera = function(options) {
 
     // Converters
     Camera._formats = new Map();
+
+    console.log("Camera", Camera.options);
 };
 
-Camera.prototype.stream = function(format, cb) {
+Camera.prototype.stream = function(format, capture) {
 
     var argsOut;
     // Output options (https://libav.org/documentation/avconv.html#Options-1)
     switch (format) {
 
-        case "mpeg":
-            // Video
+        case "mpegts":
+            // MPEG Transport Stream
             argsOut = [
                 "-f",
                 "mpegts",
@@ -56,17 +58,17 @@ Camera.prototype.stream = function(format, cb) {
             ];
             break;
 
-        case "jpeg":
-            // Frame by frame
+        case "mjpeg":
+            // Motion JPEG
             argsOut = [
                 "-f",
                 "image2pipe",
                 "-c:v",
                 "mjpeg",
+                "-b:v",
+                2048 * 1024,
                 "-r",
-                4,
-                "-q:v",
-                1
+                12
             ];
             break;
 
@@ -83,7 +85,7 @@ Camera.prototype.stream = function(format, cb) {
     }
 
     var argsIn = [
-        "-fflags", "nobuffer", "-probesize", 128 * 1024,
+        "-fflags", "nobuffer", "-probesize", 256 * 1024,
         "-f",
         "h264",
         "-r",
@@ -99,11 +101,13 @@ Camera.prototype.stream = function(format, cb) {
         stdio: ["pipe", "pipe", "inherit"]
     });
 
-    if (cb) {
+    console.log("Converter\n", args.join(" "));
+
+    if (capture) {
         // Callback
         avconv
             .stdout
-            .on("data", cb);
+            .on("data", capture);
     }
 
     // Controller
