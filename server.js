@@ -37,45 +37,29 @@ appSocket.broadcast = function(type, data) {
 
 // Camera
 var Camera = require("./camera");
-var camera = new Camera({hflip: true, vflip: true, saturation: -100});
+var camera = new Camera({hflip: true, vflip: true, saturation: -100, drc: "high"});
 
 // Computer Vision
-var cv = require("opencv");
-var CV_FLAG = true;
+var Vision = require("./vision");
+
+// Face Detection
 var processFrame = function(data) {
-    appSocket.broadcast("camera-mjpeg", data.toString("base64"));
-    if (CV_FLAG) {
-        CV_FLAG = false;
-        try {
-            cv
-                .readImage(data, function(err, matrix) {
-                    if (err) {
-                        console.error("Read Image", err);
-                        CV_FLAG = true;
-                    } else {
-                        matrix
-                            .detectObject(cv.FACE_CASCADE, {
-                                scale: 1.05,
-                                neighbors: 8,
-                                min: [64, 64]
-                            }, function(err, faces) {
-                                if (err) {
-                                    console.error("Detect Object", err);
-                                } else {
-                                    appSocket.broadcast("cv-detect-object", faces);
-                                }
-                                if (faces.length) {
-                                    var d = new Date();
-                                    matrix.save("./static/img/" + d.toISOString() + ".jpg");
-                                }
-                                CV_FLAG = true;
-                            });
-                    }
-                });
-        } catch (err) {
-            console.error("Process Frame", err);
-        }
-    }
+    var frame = data.toString("base64");
+    appSocket.broadcast("camera-mjpeg", frame);
+    Vision.read(data, function(matrix) {
+        Vision
+            .detect(matrix, "face", {
+                scale: 1.05,
+                neighbors: 8,
+                min: [48, 48]
+            }, function(faces) {
+                appSocket.broadcast("cv-detect-object", faces);
+                if (faces.length) {
+                    var d = new Date();
+                    matrix.save("./static/img/" + d.toISOString() + ".jpg");
+                }
+            });
+    });
 };
 var mjpegStream = camera.stream("mjpeg", processFrame);
 
