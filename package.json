@@ -17,7 +17,7 @@
     },
     "homepage": "https://github.com/WebMaestroFr/rpi-mpeg-ts#readme",
     "dependencies": {
-        "express": "^4.14.1",
+        "express": "^4.17.3",
         "ws": "^7.4.6"
     }
 }
